@@ -3,6 +3,8 @@
 A bash script to create a cfssl, cfssljson and multirootca based TLS issuer/PKI server.
 Inspired by [this blog post](https://www.mikenewswanger.com/posts/2018/kubernetes-pki/).
 
+Designed to be used alongside [requester](https://github.com/mrityunjaygr8/requester/)
+
 ##### NOTE
 NOT recommended for Production use as OCSP and CRL are not implmented yet
 
