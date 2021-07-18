@@ -4,12 +4,8 @@ A bash script to create a cfssl, cfssljson and multirootca based TLS issuer/PKI 
 Inspired by [this blog post](https://www.mikenewswanger.com/posts/2018/kubernetes-pki/).
 
 ##### NOTE
-NOT recommended for Production use as OCSP and CRL
-I plan on adding it soon.
-Also, currently this script expects the binaries to be installed and available on the path.
-I plan on adding the funcationality to download them as well.
-Currently, the Issuing server is running in the process of the script, which goes away when we quit.
-It should be made a systemd service
+NOT recommended for Production use as OCSP and CRL are not implmented yet
+
 
 ```
 Usage: issuer.sh [OPTIONS]
