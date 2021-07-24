@@ -154,14 +154,49 @@ function generate_issuer_certs {
         issuer.csr.json | cfssljson -bare issuer
 }
 
-function run_multirootca {
+function create_multirootca_service_file {
     local  ISSUER_ADDR="$1"
     local readonly ISSUER_PORT="$2"
+    local readonly TARGET_DIR="$3"
 
-    multirootca -a "$ISSUER_ADDR":"$ISSUER_PORT" \
+
+    sudo cat <<EOL > "/etc/systemd/system/issuer.service"
+[Unit]
+Description=PKI issuer
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+WorkingDirectory=$(get_abs_filename $TARGET_DIR)
+ExecStart=/usr/local/bin/multirootca -a "$ISSUER_ADDR":"$ISSUER_PORT" \
         -l default -roots multirootca-profile.ini \
         -tls-cert issuer.pem \
         -tls-key issuer-key.pem
+
+[Install]
+WantedBy=multi-user.target
+EOL
+}
+
+function enable_issuer_service {
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now issuer.service
+}
+
+# From: https://stackoverflow.com/a/21188136
+function get_abs_filename {
+  # $1 : relative filename
+  filename=$1
+  parentdir=$(dirname "${filename}")
+
+  if [ -d "${filename}" ]; then
+      echo "$(cd "${filename}" && pwd)"
+  elif [ -d "${parentdir}" ]; then
+    echo "$(cd "${parentdir}" && pwd)/$(basename "${filename}")"
+  fi
 }
 
 function usage {
@@ -170,6 +205,7 @@ function usage {
     echo 
     echo "This script creates a cfssl Public Key Issuing Server for maintaining you own PKI"
     echo "This script uses cfssl, cfssljson and multirootca packages from Cloudflare's cfssl library"
+    echo "This script will create a systemd service called issuer.service, which can then be used to manage the issuer"
     echo 
     echo "Options:"
     echo 
@@ -271,7 +307,8 @@ function main {
     create_config_file "$API_PASS"
     generate_issuer_certs
     create_multirootca_ini_file
-    run_multirootca "$ISSUER_ADDR" "$ISSUER_PORT"
+    create_multirootca_service_file "$ISSUER_ADDR" "$ISSUER_PORT"
+    enable_issuer_service
 }
 
 main "$@"

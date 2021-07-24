@@ -14,6 +14,7 @@ Usage: issuer.sh [OPTIONS]
 
 This script creates a cfssl Public Key Issuing Server for maintaining you own PKI
 This script uses cfssl, cfssljson and multirootca packages from Cloudflare's cfssl library
+This script will create a systemd service called issuer.service, which can then be used to manage the issuer
 
 Options:
 
@@ -35,4 +36,4 @@ Example:
 - [ ] OCSP Support
 - [ ] CRL Support
 - [ ] Fetch binaries
-- [ ] Systemd service for the issuing server
+- [x] Systemd service for the issuing server
