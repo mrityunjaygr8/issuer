@@ -182,7 +182,7 @@ function usage {
     echo -e "-h, --help\t\tShow this message and exit"
     echo 
     echo "Example:"
-    echo "  issuer.sh --target-dir issuer --issuer-hosts \"localhost,127.0.0.1\" --api-pass=\"7be2e3fda569b88b\""
+    echo "  issuer.sh --target-dir issuer --issuer-hosts \"localhost,127.0.0.1\" --api-pass \"7be2e3fda569b88b\" --root-cn \"My PKI Issuer\""
     echo
 }
 
