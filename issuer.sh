@@ -1,4 +1,56 @@
 #!/bin/bash 
+readonly SCRIPT_NAME="$(basename "$0")"
+
+function ensure_binaries_accessible {
+    if ! [ -x "$(command -v cfssl)" ]; then
+        log_error "CFSSL is not installed"
+        exit 1
+    fi
+
+    if ! [ -x "$(command -v cfssljson)" ]; then
+        log_error "CFSSLJSON is not installed"
+        exit 1
+    fi
+    if ! [ -x "$(command -v multirootca)" ]; then
+        log_error "multirootca is not installed"
+        exit 1
+    fi
+
+}
+
+# Taken from: https://github.com/hashicorp/terraform-aws-consul/blob/master/modules/install-consul/install-consul
+function log {
+  local -r level="$1"
+  local -r message="$2"
+  local -r timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+  >&2 echo -e "${timestamp} [${level}] [$SCRIPT_NAME] ${message}"
+}
+
+function log_info {
+  local -r message="$1"
+  log "INFO" "$message"
+}
+
+function log_warn {
+  local -r message="$1"
+  log "WARN" "$message"
+}
+
+function log_error {
+  local -r message="$1"
+  log "ERROR" "$message"
+}
+
+function assert_not_empty {
+  local -r arg_name="$1"
+  local -r arg_value="$2"
+
+  if [[ -z "$arg_value" ]]; then
+    log_error "The value for '$arg_name' cannot be empty"
+    print_usage
+    exit 1
+  fi
+}
 
 function create_csr_files {
     local readonly ROOT_CN="$1"
@@ -171,7 +223,7 @@ Type=simple
 Restart=always
 RestartSec=1
 WorkingDirectory=$(get_abs_filename $TARGET_DIR)
-ExecStart=/usr/local/bin/multirootca -a "$ISSUER_ADDR":"$ISSUER_PORT" \
+ExecStart=$(which multirootca) -a "$ISSUER_ADDR":"$ISSUER_PORT" \
         -l default -roots multirootca-profile.ini \
         -tls-cert issuer.pem \
         -tls-key issuer-key.pem
@@ -277,38 +329,35 @@ function main {
         esac
     done
 
-    if [ -z "$ROOT_CN" ]
-    then
-        echo "The root-cn cannot be blank"
-        usage
-        exit 1
-    fi
-    if [ -z "$API_PASS" ]
-    then
-        echo "The api-pass cannot be blank"
-        usage
-        exit 1
-    fi
+    assert_not_empty "root-cn" "$ROOT_CN"
+    assert_not_empty "api-pass" "$API_PASS"
 
     hex_string_is_valid "$API_PASS"
     PASS_VALID="$?"
     if [ "$PASS_VALID" -ne 0 ]
     then
-        echo "Improper api-ass. Please enter a 16 byte hex string"
-        echo "You can use https://www.browserling.com/tools/random-hex to generate a valid api-pass"
+        log_error "Improper api-ass. Please enter a 16 byte hex string"
+        log_error "You can use https://www.browserling.com/tools/random-hex to generate a valid api-pass"
         usage
         exit 1
     fi
 
-    set -xe
+    log_info "Creating target directory, \"$TARGET_DIR\", if it does not exist"
     mkdir -p "$TARGET_DIR"
     cd "$TARGET_DIR"
+    log_info "Creating the CSR files"
     create_csr_files  "$ROOT_CN" "$ISSUER_HOSTS"
+    log_info "Creating the Issuer config file"
     create_config_file "$API_PASS"
+    log_info "Generating Issuer Certificates"
     generate_issuer_certs
+    log_info "Creating the issuer/multirootca config file"
     create_multirootca_ini_file
+    log_info "Creating the issuer service file"
     create_multirootca_service_file "$ISSUER_ADDR" "$ISSUER_PORT"
+    log_info "Starting the issuer service"
     enable_issuer_service
+    log_info "ALL DONE"
 }
 
 main "$@"
